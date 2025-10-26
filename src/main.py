@@ -1,21 +1,42 @@
-import requests
-import os
+"""
+Main script execution - load the dataset / learn classifiers
+"""
 
-# Folder do zapisu zdjęć
-output_dir = './data/picsum_photos'
-os.makedirs(output_dir, exist_ok=True)
+from simple_dataset_loader import SimpleDatasetLoader
+from simple_trainer import SimpleYOLOTrainer
 
-# Pobierz 100 zdjęć
-for i in range(1, 101):
-    url = 'https://picsum.photos/300'
-    response = requests.get(url)
+def main():
+    print("Speed Limit Recognition - Demo")
+    print("=" * 50)
 
-    if response.status_code == 200:
-        filename = f'image_{i:03}.jpg'
-        filepath = os.path.join(output_dir, filename)
+    print("\n Checking dataset...")
+    loader = SimpleDatasetLoader()
+    stats = loader.get_dataset_stats()
 
-        with open(filepath, 'wb') as f:
-            f.write(response.content)
-        print(f'Pobrano {filename}')
+    total_images = sum(stats.values())
+    if total_images == 0:
+        print("No dataset found! Please run:")
+        print("  python convert_to_yolo.py")
+        return False
+
+    print(f"Dataset ready: {total_images} total images")
+
+    print("\n Sample images:")
+    samples = loader.load_sample_images(count=3)
+    for sample in samples:
+        print(f"  {sample['path']}: {sample['shape']}")
+
+    print("\n Starting training...")
+    trainer = SimpleYOLOTrainer()
+
+    results = trainer.train_model(epochs=2)
+
+    if results:
+        print("\nCompleted successfully!")
+        return True
     else:
-        print(f'Błąd podczas pobierania zdjęcia {i}: HTTP {response.status_code}')
+        print("\nFailed!")
+        return False
+
+if __name__ == "__main__":
+    main()

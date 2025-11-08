@@ -31,7 +31,7 @@ class SimpleDatasetLoader:
         """Get dataset statistics"""
         stats = {}
 
-        for split in ['train', 'val', 'test']:
+        for split in ['train', 'valid', 'test']:
             split_path = self.dataset_path / split / 'images'
             if split_path.exists():
                 image_count = len(list(split_path.glob('*.jpg'))) + len(list(split_path.glob('*.png')))

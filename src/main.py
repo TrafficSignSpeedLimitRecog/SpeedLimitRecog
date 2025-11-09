@@ -1,42 +1,38 @@
 """
-Main script execution - load the dataset / learn classifiers
+Speed Limit Recognition System
 """
 
-from simple_dataset_loader import SimpleDatasetLoader
-from simple_trainer import SimpleYOLOTrainer
+import sys
+import argparse
+import logging
+from pathlib import Path
+
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
+
+from PySide6.QtWidgets import QApplication
+from src.gui.main_window import SimpleDetectionApp
+
+logging.basicConfig(level=logging.INFO)
+
+
+def run_gui():
+    app = QApplication(sys.argv)
+    window = SimpleDetectionApp()
+    window.show()
+    sys.exit(app.exec())
+
 
 def main():
-    print("Speed Limit Recognition - Demo")
-    print("=" * 50)
+    parser = argparse.ArgumentParser(description='Speed Limit Recognition System')
+    parser.add_argument('--gui', action='store_true', help='Launch GUI mode')
+    args = parser.parse_args()
 
-    print("\n Checking dataset...")
-    loader = SimpleDatasetLoader()
-    stats = loader.get_dataset_stats()
-
-    total_images = sum(stats.values())
-    if total_images == 0:
-        print("No dataset found! Please run:")
-        print("  python convert_to_yolo.py")
-        return False
-
-    print(f"Dataset ready: {total_images} total images")
-
-    print("\n Sample images:")
-    samples = loader.load_sample_images(count=3)
-    for sample in samples:
-        print(f"  {sample['path']}: {sample['shape']}")
-
-    print("\n Starting training...")
-    trainer = SimpleYOLOTrainer()
-
-    results = trainer.train_model(epochs=2)
-
-    if results:
-        print("\nCompleted successfully!")
-        return True
+    if args.gui:
+        run_gui()
     else:
-        print("\nFailed!")
-        return False
+        print("Use --gui to launch detection interface")
+
 
 if __name__ == "__main__":
     main()

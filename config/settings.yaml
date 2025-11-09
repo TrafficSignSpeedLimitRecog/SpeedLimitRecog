@@ -1,15 +1,24 @@
 # Model Settings
 model:
   yolo_model: "models/speed_limit_recog/weights/best.pt"
-  confidence_threshold: 0.7
+  confidence_threshold: 0.25
   iou_threshold: 0.45
   max_det: 50
 
 # Speed Sign Classes
 classes:
-  speed_limits: [20, 30, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140]
-  special_classes:
-    end_limit: "END"
+  - 10
+  - 20
+  - 30
+  - 40
+  - 50
+  - 60
+  - 70
+  - 80
+  - 90
+  - 100
+  - 110
+  - 120
 
 # Processing Settings
 processing:

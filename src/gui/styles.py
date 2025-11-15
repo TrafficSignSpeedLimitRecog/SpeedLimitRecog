@@ -131,3 +131,34 @@ class AppStyles:
             font-weight: bold;
         }}
     """
+
+    TAB_WIDGET = f"""
+        QTabWidget::pane {{
+            border: 2px solid {COLORS['border']};
+            border-radius: 5px;
+        }}
+        QTabBar::tab {{
+            background-color: {COLORS['light_bg']};
+            padding: 10px 20px;
+            margin-right: 5px;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }}
+        QTabBar::tab:selected {{
+            background-color: {COLORS['primary']};
+            color: white;
+            font-weight: bold;
+        }}
+    """
+
+    PROGRESS_BAR = f"""
+        QProgressBar {{
+            border: 2px solid {COLORS['primary']};
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }}
+        QProgressBar::chunk {{
+            background-color: {COLORS['success']};
+        }}
+    """

@@ -2,7 +2,7 @@
 Reusable GUI Components
 """
 
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QProgressBar
 from PySide6.QtCore import Signal, Qt
 from .styles import AppStyles
 
@@ -86,3 +86,48 @@ class StatusBar(QLabel):
         }
 
         self.setStyleSheet(style_map.get(status_type, AppStyles.STATUS_SUCCESS))
+
+
+class VideoControls(QWidget):
+
+    load_video = Signal()
+    process_video = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.load_video_btn = None
+        self.process_btn = None
+        self.progress_bar = None
+        self._setup_ui()
+
+    def _setup_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setSpacing(10)
+
+        self.load_video_btn = QPushButton("Load Video")
+        self.load_video_btn.setStyleSheet(AppStyles.BUTTON)
+        self.load_video_btn.clicked.connect(self.load_video.emit)
+
+        self.process_btn = QPushButton("Process Video")
+        self.process_btn.setStyleSheet(AppStyles.BUTTON_SUCCESS)
+        self.process_btn.clicked.connect(self.process_video.emit)
+        self.process_btn.setEnabled(False)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setStyleSheet(AppStyles.PROGRESS_BAR)
+        self.progress_bar.setVisible(False)
+
+        layout.addWidget(self.load_video_btn)
+        layout.addWidget(self.process_btn)
+        layout.addWidget(self.progress_bar, 1)
+
+    def set_video_loaded(self, loaded):
+        self.process_btn.setEnabled(loaded)
+
+    def set_processing(self, processing):
+        self.progress_bar.setVisible(processing)
+        self.process_btn.setEnabled(not processing)
+        self.load_video_btn.setEnabled(not processing)
+
+    def update_progress(self, value):
+        self.progress_bar.setValue(value)

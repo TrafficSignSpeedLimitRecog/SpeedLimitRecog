@@ -193,7 +193,7 @@ class SimpleDetectionApp(QMainWindow):
             self.status_bar.set_status(f"Error: {e}", "error")
 
     def _load_test_images(self):
-        test_folder = Path("datasets/test_videos/input")
+        test_folder = Path("datasets/test_images")
         if test_folder.exists():
             self._load_images_from_folder(test_folder)
 

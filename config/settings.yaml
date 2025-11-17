@@ -1,40 +1,52 @@
 # Model Settings
 model:
   yolo_model: "models/speed_limit_recog/weights/best.pt"
-  confidence_threshold: 0.25
+  confidence_threshold: 0.5
   iou_threshold: 0.45
   max_det: 50
 
 # Speed Sign Classes
 classes:
-  - 10
-  - 20
-  - 30
-  - 40
-  - 50
-  - 60
-  - 70
-  - 80
-  - 90
-  - 100
-  - 110
-  - 120
+  - "20"
+  - "30"
+  - "40"
+  - "50"
+  - "60"
+  - "70"
+  - "80"
+  - "100"
+  - "120"
+  - "speed-sign-end"
 
 # Processing Settings
 processing:
   input_size: 640
   batch_size: 1
-  fps_target: 30
+  use_gpu: true
+  batch_processing: false
+  fps_target: 60
   tracking_max_disappeared: 30
   tracking_max_distance: 100
 
+# Video Settings
+video:
+  supported_formats:
+    - .mp4
+    - .avi
+    - .mov
+    - .mkv
+  default_codec: mp4v
+  output_quality: high
+  input_dir: "datasets/test_videos/input"
+  output_dir: "datasets/test_videos/output"
+
 # GUI Settings
 gui:
-  window_width: 1200
-  window_height: 800
-  video_width: 800
-  video_height: 600
-  log_max_lines: 1000
+  window_width: 1600
+  window_height: 1000
+  theme: "dark"
+  auto_play_processed: true
+  show_confidence: true
 
 # Export Settings
 export:
@@ -42,9 +54,11 @@ export:
   video_quality: "high"
   include_confidence: true
   include_timestamps: true
+  save_frames: false
 
 # Logging
 logging:
   level: "INFO"
   max_file_size_mb: 10
   backup_count: 5
+  console_output: true

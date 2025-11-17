@@ -3,7 +3,6 @@ YOLO Trainer for Speed Limit Recognition
 """
 
 import torch
-import shutil
 import logging
 from ultralytics import YOLO
 from pathlib import Path
@@ -13,15 +12,13 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleYOLOTrainer:
-    """YOLO model trainer"""
 
     def __init__(self, model_name="yolov8s.pt"):
         self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         logger.info(f"Trainer initialized: model={self.model_name}, device={self.device}")
 
-    def train_model(self, data_config="datasets/yolo_detection/data.yaml", epochs=100):
-        """Train YOLO model"""
+    def train_model(self, data_config="datasets/yolo_detection/data.yaml", epochs=300):
         logger.info(f"Starting training: config={data_config}, epochs={epochs}")
 
         try:
@@ -32,7 +29,7 @@ class SimpleYOLOTrainer:
                 epochs=epochs,
                 imgsz=640,
                 batch=16,
-                patience=20,
+                patience=50,
                 save=True,
                 plots=True,
                 name='speed_limit_recog',
@@ -41,23 +38,32 @@ class SimpleYOLOTrainer:
                 device=self.device,
                 workers=8,
                 amp=True,
-                cache=True,
+                cache=False,
                 optimizer='AdamW',
-                lr0=0.001,
+                lr0=0.01,
                 lrf=0.01,
                 momentum=0.937,
                 weight_decay=0.0005,
-                warmup_epochs=3,
+                warmup_epochs=3.0,
+                warmup_momentum=0.8,
+                warmup_bias_lr=0.1,
                 hsv_h=0.015,
                 hsv_s=0.7,
                 hsv_v=0.4,
-                degrees=10.0,
+                degrees=0.0,
                 translate=0.1,
                 scale=0.5,
+                shear=0.0,
+                perspective=0.0,
                 flipud=0.0,
                 fliplr=0.5,
                 mosaic=1.0,
-                mixup=0.1
+                mixup=0.0,
+                copy_paste=0.0,
+                box=7.5,
+                cls=0.5,
+                dfl=1.5,
+                close_mosaic=10
             )
 
             logger.info("Training completed successfully")
@@ -69,7 +75,6 @@ class SimpleYOLOTrainer:
 
     @staticmethod
     def validate_model(model_path, data_config="datasets/yolo_detection/data.yaml"):
-        """Validate trained model"""
         try:
             logger.info(f"Validating model: {model_path}")
             model = YOLO(model_path)
@@ -83,30 +88,6 @@ class SimpleYOLOTrainer:
             logger.error(f"Validation failed: {e}")
             raise
 
-    @staticmethod
-    def clear_cache(dataset_path="datasets/yolo_detection"):
-        """Clear YOLO cache files"""
-        dataset_dir = Path(dataset_path)
-        cache_files = list(dataset_dir.glob("*/labels.cache"))
-
-        for cache_file in cache_files:
-            try:
-                cache_file.unlink()
-                logger.info(f"Removed cache: {cache_file}")
-            except Exception as e:
-                logger.warning(f"Failed to remove {cache_file}: {e}")
-
-    @staticmethod
-    def clear_old_model(model_dir="models/speed_limit_recog"):
-        """Remove old model directory"""
-        model_path = Path(model_dir)
-        if model_path.exists():
-            try:
-                shutil.rmtree(model_path)
-                logger.info(f"Removed old model: {model_path}")
-            except Exception as e:
-                logger.warning(f"Failed to remove {model_path}: {e}")
-
 
 def main():
     data_path = Path("datasets/yolo_detection/data.yaml")
@@ -117,12 +98,7 @@ def main():
 
     trainer = SimpleYOLOTrainer(model_name="yolov8s.pt")
 
-    # Clear old cache and model
-    trainer.clear_cache()
-    trainer.clear_old_model()
-
-    # Train
-    results = trainer.train_model(epochs=100)
+    trainer.train_model(epochs=300)  # USUŃ 'results ='
 
     best_model_path = Path("models/speed_limit_recog/weights/best.pt")
     if best_model_path.exists():

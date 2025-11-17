@@ -2,7 +2,7 @@
 Reusable GUI Components
 """
 
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QProgressBar
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QLabel, QProgressBar, QSlider
 from PySide6.QtCore import Signal, Qt
 from .styles import AppStyles
 
@@ -13,6 +13,7 @@ class ControlBar(QWidget):
     previous = Signal()
     next = Signal()
     detect = Signal()
+    confidence_changed = Signal(float)
 
     def __init__(self):
         super().__init__()
@@ -20,6 +21,8 @@ class ControlBar(QWidget):
         self.prev_btn = None
         self.next_btn = None
         self.detect_btn = None
+        self.conf_slider = None
+        self.conf_label = None
         self._setup_ui()
 
     def _setup_ui(self):
@@ -44,11 +47,29 @@ class ControlBar(QWidget):
         self.detect_btn.setStyleSheet(AppStyles.BUTTON_SUCCESS)
         self.detect_btn.clicked.connect(self.detect.emit)
 
+        # Confidence slider
+        self.conf_label = QLabel("Confidence: 0.50")
+        self.conf_label.setStyleSheet(f"color: {AppStyles.COLORS['text_primary']}; font-weight: bold; min-width: 120px;")
+
+        self.conf_slider = QSlider(Qt.Horizontal)
+        self.conf_slider.setRange(25, 95)
+        self.conf_slider.setValue(50)
+        self.conf_slider.setFixedWidth(150)
+        self.conf_slider.setStyleSheet(AppStyles.SLIDER)
+        self.conf_slider.valueChanged.connect(self._on_conf_changed)
+
         layout.addWidget(self.load_btn)
         layout.addStretch()
+        layout.addWidget(self.conf_label)
+        layout.addWidget(self.conf_slider)
         layout.addWidget(self.prev_btn)
         layout.addWidget(self.next_btn)
         layout.addWidget(self.detect_btn)
+
+    def _on_conf_changed(self, value):
+        conf = value / 100.0
+        self.conf_label.setText(f"Confidence: {conf:.2f}")
+        self.confidence_changed.emit(conf)
 
     def enable_navigation(self, enabled):
         self.prev_btn.setEnabled(enabled)
@@ -90,7 +111,7 @@ class StatusBar(QLabel):
 
 class VideoControls(QWidget):
 
-    load_video = Signal()
+    load_new_video = Signal()
     process_video = Signal()
 
     def __init__(self):
@@ -106,7 +127,8 @@ class VideoControls(QWidget):
 
         self.load_video_btn = QPushButton("Load Video")
         self.load_video_btn.setStyleSheet(AppStyles.BUTTON)
-        self.load_video_btn.clicked.connect(self.load_video.emit)
+        self.load_video_btn.clicked.connect(self.load_new_video.emit)
+        self.load_video_btn.setEnabled(False)
 
         self.process_btn = QPushButton("Process Video")
         self.process_btn.setStyleSheet(AppStyles.BUTTON_SUCCESS)
@@ -123,6 +145,7 @@ class VideoControls(QWidget):
 
     def set_video_loaded(self, loaded):
         self.process_btn.setEnabled(loaded)
+        self.load_video_btn.setEnabled(loaded)
 
     def set_processing(self, processing):
         self.progress_bar.setVisible(processing)

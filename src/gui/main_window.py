@@ -2,17 +2,22 @@
 Speed Limit Detection GUI
 """
 
-import sys
 import logging
+import shutil
+import sys
+import cv2
+
 from pathlib import Path
+
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtMultimediaWidgets import QVideoWidget
 
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from PySide6.QtWidgets import QMainWindow, QVBoxLayout, QWidget, QApplication, QFileDialog, QScrollArea, QLabel, QTabWidget
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtWidgets import QMainWindow, QApplication, QFileDialog, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSlider, QLabel, QFrame
+from PySide6.QtCore import Qt, QThread, Signal, QUrl
 from PySide6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QDragEnterEvent, QDropEvent
-import cv2
 
 from src.core.detector import SpeedSignDetector
 from src.core.video_processor import VideoProcessor
@@ -46,15 +51,16 @@ class VideoProcessingThread(QThread):
             self.finished.emit(False, str(e))
 
 
-class ImageViewer(QLabel):
+class DropZoneLabel(QLabel):
 
     def __init__(self):
         super().__init__()
         self.setAlignment(Qt.AlignCenter)
-        self.setMinimumSize(1000, 700)
-        self.setStyleSheet(AppStyles.IMAGE_LABEL)
+        self.setStyleSheet(AppStyles.DROP_ZONE)
         self.setAcceptDrops(True)
         self.drop_callback = None
+        self.click_callback = None
+        self.setText("📁 Click or Drag & Drop Video\n\nSupported: MP4, AVI, MOV, MKV")
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -65,6 +71,147 @@ class ImageViewer(QLabel):
         if urls and self.drop_callback:
             file_path = urls[0].toLocalFile()
             self.drop_callback(file_path)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self.click_callback:
+            self.click_callback()
+        super().mousePressEvent(event)
+
+
+class VideoPlayerWidget(QWidget):
+
+    def __init__(self):
+        super().__init__()
+        self.video_path = None
+        self.is_playing = False
+        self._setup_ui()
+
+    def _setup_ui(self):
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(5)
+
+        self.player = QMediaPlayer()
+        self.audio_output = QAudioOutput()
+        self.player.setAudioOutput(self.audio_output)
+
+        self.video_widget = QVideoWidget()
+        self.video_widget.setStyleSheet("background-color: #000000;")
+        self.player.setVideoOutput(self.video_widget)
+
+        main_layout.addWidget(self.video_widget, 1)
+
+        controls = QWidget()
+        controls.setStyleSheet(f"background-color: {AppStyles.COLORS['bg_darker']}; padding: 10px;")
+        controls_layout = QHBoxLayout(controls)
+
+        self.play_btn = QPushButton("Play")
+        self.play_btn.setStyleSheet(AppStyles.BUTTON)
+        self.play_btn.setFixedWidth(60)
+        self.play_btn.clicked.connect(self._toggle_play)
+        controls_layout.addWidget(self.play_btn)
+
+        self.time_label = QLabel("00:00")
+        self.time_label.setStyleSheet(f"color: {AppStyles.COLORS['text_primary']}; min-width: 50px;")
+        controls_layout.addWidget(self.time_label)
+
+        self.position_slider = QSlider(Qt.Horizontal)
+        self.position_slider.setStyleSheet(AppStyles.SLIDER)
+        self.position_slider.sliderMoved.connect(self._set_position)
+        controls_layout.addWidget(self.position_slider, 1)
+
+        self.duration_label = QLabel("00:00")
+        self.duration_label.setStyleSheet(f"color: {AppStyles.COLORS['text_primary']}; min-width: 50px;")
+        controls_layout.addWidget(self.duration_label)
+
+        vol_label = QLabel("Vol")
+        vol_label.setStyleSheet(f"color: {AppStyles.COLORS['text_primary']}; font-weight: bold;")
+        controls_layout.addWidget(vol_label)
+
+        self.volume_slider = QSlider(Qt.Horizontal)
+        self.volume_slider.setMaximum(100)
+        self.volume_slider.setValue(50)
+        self.volume_slider.setFixedWidth(100)
+        self.volume_slider.setStyleSheet(AppStyles.SLIDER)
+        self.volume_slider.valueChanged.connect(self._set_volume)
+        controls_layout.addWidget(self.volume_slider)
+
+        main_layout.addWidget(controls)
+
+        self.player.positionChanged.connect(self._update_position)
+        self.player.durationChanged.connect(self._update_duration)
+        self.player.mediaStatusChanged.connect(self._handle_media_status)
+
+        self._set_volume(50)
+
+    def load_video(self, video_path):
+        self.video_path = video_path
+        self.player.setSource(QUrl.fromLocalFile(video_path))
+        self.player.pause()
+
+    def _toggle_play(self):
+        if self.is_playing:
+            self.player.pause()
+            self.play_btn.setText("Play")
+        else:
+            self.player.play()
+            self.play_btn.setText("Pause")
+        self.is_playing = not self.is_playing
+
+    def _set_position(self, position):
+        self.player.setPosition(position)
+
+    def _update_position(self, position):
+        self.position_slider.setValue(position)
+        self.time_label.setText(self._format_time(position))
+
+    def _update_duration(self, duration):
+        self.position_slider.setMaximum(duration)
+        self.duration_label.setText(self._format_time(duration))
+
+    def _set_volume(self, volume):
+        self.audio_output.setVolume(volume / 100.0)
+
+    @staticmethod
+    def _format_time(ms):
+        s = ms // 1000
+        m, s = divmod(s, 60)
+        return f"{m:02d}:{s:02d}"
+
+    def _handle_media_status(self, status):
+        if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            self.player.setPosition(0)
+            self.player.pause()
+            self.is_playing = False
+            self.play_btn.setText("Play")
+
+
+class ImageViewer(QLabel):
+
+    def __init__(self):
+        super().__init__()
+        self.setAlignment(Qt.AlignCenter)
+        self.setMinimumSize(1000, 700)
+        self.setStyleSheet(AppStyles.IMAGE_LABEL)
+        self.setAcceptDrops(True)
+        self.drop_callback = None
+        self.click_callback = None
+        self.setScaledContents(False)
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        urls = event.mimeData().urls()
+        if urls and self.drop_callback:
+            file_path = urls[0].toLocalFile()
+            self.drop_callback(file_path)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self.click_callback:
+            self.click_callback()
+        super().mousePressEvent(event)
 
 
 class SimpleDetectionApp(QMainWindow):
@@ -79,6 +226,7 @@ class SimpleDetectionApp(QMainWindow):
         self.cache = {}
         self.current_video_path = None
         self.video_thread = None
+        self.video_player = None
 
         self._setup_ui()
         self._setup_shortcuts()
@@ -87,8 +235,13 @@ class SimpleDetectionApp(QMainWindow):
 
     def _setup_ui(self):
         self.setWindowTitle("Speed Limit Detection System")
-        self.setGeometry(100, 100, 1400, 900)
+        self.setGeometry(100, 50, 1600, 1000)
         self.setStyleSheet(AppStyles.WINDOW)
+
+        icon_path = Path("assets/icon.png")
+        if icon_path.exists():
+            from PySide6.QtGui import QIcon
+            self.setWindowIcon(QIcon(str(icon_path)))
 
         central = QWidget()
         self.setCentralWidget(central)
@@ -114,38 +267,50 @@ class SimpleDetectionApp(QMainWindow):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(15)
+        layout.setContentsMargins(10, 10, 10, 10)
 
         self.control_bar = ControlBar()
         self.control_bar.load_folder.connect(self._load_folder)
         self.control_bar.previous.connect(self._previous_image)
         self.control_bar.next.connect(self._next_image)
         self.control_bar.detect.connect(self._detect_current)
+        self.control_bar.confidence_changed.connect(self._on_confidence_changed)
         layout.addWidget(self.control_bar)
 
         self.info_bar = InfoBar()
         layout.addWidget(self.info_bar)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setAlignment(Qt.AlignCenter)
-        scroll.setStyleSheet(AppStyles.SCROLL_AREA)
+        self.image_container = QWidget()
+        self.image_container.setStyleSheet(AppStyles.SCROLL_AREA)
+        image_layout = QVBoxLayout(self.image_container)
+        image_layout.setContentsMargins(0, 0, 0, 0)
+        image_layout.setAlignment(Qt.AlignCenter)
 
         self.image_label = QLabel()
         self.image_label.setAlignment(Qt.AlignCenter)
-        self.image_label.setMinimumSize(1000, 700)
         self.image_label.setStyleSheet(AppStyles.IMAGE_LABEL)
-        scroll.setWidget(self.image_label)
-        layout.addWidget(scroll, 1)
+        self.image_label.setScaledContents(False)
+        image_layout.addWidget(self.image_label)
+
+        layout.addWidget(self.image_container, 1)
 
         return tab
+
+    def _on_confidence_changed(self, conf):
+        """Update detector confidence threshold"""
+        if self.detector:
+            self.detector.config['model']['confidence_threshold'] = conf
+            self.cache = {}  # Clear cache when confidence changes
+            self.status_bar.set_status(f"Confidence threshold: {conf:.2f}")
 
     def _create_video_tab(self):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         layout.setSpacing(15)
+        layout.setContentsMargins(10, 10, 10, 10)
 
         self.video_controls = VideoControls()
-        self.video_controls.load_video.connect(self._load_video)
+        self.video_controls.load_new_video.connect(self._load_video_on_click)
         self.video_controls.process_video.connect(self._process_video)
         layout.addWidget(self.video_controls)
 
@@ -154,21 +319,16 @@ class SimpleDetectionApp(QMainWindow):
         self.video_info_label.setStyleSheet(AppStyles.INFO_LABEL)
         layout.addWidget(self.video_info_label)
 
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setAlignment(Qt.AlignCenter)
-        scroll.setStyleSheet(AppStyles.SCROLL_AREA)
+        self.video_container = QWidget()
+        self.video_layout = QVBoxLayout(self.video_container)
+        self.video_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.video_preview = ImageViewer()
-        self.video_preview.drop_callback = self._handle_video_drop
-        scroll.setWidget(self.video_preview)
-        layout.addWidget(scroll, 1)
+        self.drop_zone = DropZoneLabel()
+        self.drop_zone.drop_callback = self._handle_video_drop
+        self.drop_zone.click_callback = self._load_video_on_click
+        self.video_layout.addWidget(self.drop_zone)
 
-        help_text = QLabel("Drag & Drop video file here or use 'Load Video' button\n"
-                          "Supported formats: MP4, AVI, MOV, MKV")
-        help_text.setAlignment(Qt.AlignCenter)
-        help_text.setStyleSheet("color: #666; font-size: 12px; padding: 10px;")
-        layout.addWidget(help_text)
+        layout.addWidget(self.video_container, 1)
 
         return tab
 
@@ -247,16 +407,20 @@ class SimpleDetectionApp(QMainWindow):
                 self._display_image(self.current_image, self.image_label)
                 self.status_bar.set_status("Press Space to detect")
 
-    def _display_image(self, cv_image, label_widget):
+    @staticmethod
+    def _display_image(cv_image, label_widget):
         rgb = cv2.cvtColor(cv_image, cv2.COLOR_BGR2RGB)
         h, w, ch = rgb.shape
         bytes_per_line = ch * w
         qt_image = QImage(rgb.data, w, h, bytes_per_line, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(qt_image)
 
+        container_width = label_widget.parent().width() - 40
+        container_height = label_widget.parent().height() - 40
+
         scaled = pixmap.scaled(
-            label_widget.width(),
-            label_widget.height(),
+            container_width,
+            container_height,
             Qt.KeepAspectRatio,
             Qt.SmoothTransformation
         )
@@ -306,7 +470,7 @@ class SimpleDetectionApp(QMainWindow):
         else:
             self.status_bar.set_status(f"No signs detected{cache_text}", "warning")
 
-    def _load_video(self):
+    def _load_video_on_click(self):
         video_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select Video File",
@@ -327,15 +491,21 @@ class SimpleDetectionApp(QMainWindow):
             self.status_bar.set_status("Invalid video format", "error")
 
     def _set_video(self, video_path):
-        self.current_video_path = video_path
-        video_name = Path(video_path).name
+        input_dir = Path("datasets/test_videos/input")
+        input_dir.mkdir(parents=True, exist_ok=True)
 
-        cap = cv2.VideoCapture(video_path)
+        video_file = Path(video_path)
+        dest_path = input_dir / video_file.name
+
+        if not dest_path.exists():
+            shutil.copy2(video_path, dest_path)
+            logger.info(f"Video copied to: {dest_path}")
+
+        self.current_video_path = str(dest_path)
+        video_name = video_file.name
+
+        cap = cv2.VideoCapture(self.current_video_path)
         if cap.isOpened():
-            ret, frame = cap.read()
-            if ret:
-                self._display_image(frame, self.video_preview)
-
             fps = int(cap.get(cv2.CAP_PROP_FPS))
             width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -347,6 +517,17 @@ class SimpleDetectionApp(QMainWindow):
             )
 
             cap.release()
+
+            self.drop_zone.hide()
+
+            if self.video_player:
+                self.video_layout.removeWidget(self.video_player)
+                self.video_player.deleteLater()
+
+            self.video_player = VideoPlayerWidget()
+            self.video_player.load_video(self.current_video_path)
+            self.video_layout.addWidget(self.video_player)
+
             self.video_controls.set_video_loaded(True)
             self.status_bar.set_status(f"Video loaded: {video_name}")
         else:
@@ -385,12 +566,9 @@ class SimpleDetectionApp(QMainWindow):
         if success:
             self.status_bar.set_status(f"Video saved: {Path(result).name}")
 
-            cap = cv2.VideoCapture(result)
-            if cap.isOpened():
-                ret, frame = cap.read()
-                if ret:
-                    self._display_image(frame, self.video_preview)
-                cap.release()
+            if self.video_player:
+                self.video_player.load_video(result)
+
         else:
             self.status_bar.set_status(f"Processing failed: {result}", "error")
 

@@ -17,11 +17,33 @@ ENV/
 *.swp
 *.swo
 
-# Dataset files (tylko picsum_photos na razie)
-datasets/picsum_photos/
-*.jpg
-*.jpeg
-*.png
-
 # Logs
 *.log
+
+# Datasets
+datasets/yolo_detection/*
+!datasets/yolo_detection/.gitkeep
+
+datasets/test_images/*
+!datasets/test_images/.gitkeep
+
+datasets/test_videos/input/*
+!datasets/test_videos/input/.gitkeep
+
+datasets/test_videos/output/*
+!datasets/test_videos/output/.gitkeep
+
+# YOLO outputs
+runs/
+
+# Models
+models/speed_limit_recog/*
+!models/speed_limit_recog/.gitkeep
+
+# Downloaded models
+yolov8*.pt
+yolo11*.pt
+
+# OS
+.DS_Store
+Thumbs.db

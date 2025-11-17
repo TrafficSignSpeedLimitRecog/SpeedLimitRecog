@@ -15,18 +15,38 @@ Speed limit sign detection using YOLOv8. Detects speed limit signs in images and
 
 ## 📊 Dataset Stats
 
-- **mAP@50:** 99.0%
-- **mAP@50-95:** 85.3%
-- **Speed:** 60 FPS (RTX 4090)
+- **Total Images:** 6,304
+- **Train:** 4,656 (73.8%)
+- **Valid:** 1,086 (17.2%)
+- **Test:** 562 (8.9%)
 - **Classes:** 10 ['20', '30', '40', '50', '60', '70', '80', '100', '120', 'speed-sign-end']
+- **Format:** YOLO v8 PyTorch
 
 ## 🎯 Performance
 
-- **Total:** 6,301 images
-- **Train:** 4,653 (73.8%)
-- **Valid:** 1,086 (17.2%)
-- **Test:** 562 (8.9%)
-- **Format:** YOLO v8 PyTorch
+| Metric              | Value                |
+|---------------------|----------------------|
+| **mAP@50**          | **99.0%**            |
+| **mAP@50-95**       | **85.9%**            |
+| **Precision**       | **98.1%**            |
+| **Recall**          | **98.2%**            |
+| **Inference Speed** | **0.7ms (1428 FPS)** |
+| **Training Time**   | **1.6h (RTX 4090)**  |
+
+### Per-Class Performance
+
+| Class          | Precision | Recall   | mAP@50 | mAP@50-95 |
+|----------------|-----------|----------|--------|-----------|
+| 20 km/h        | 98.2%     | 98.4%    | 99.4%  | 86.5%     |
+| 30 km/h        | 98.0%     | 98.4%    | 98.3%  | 84.4%     |
+| 40 km/h        | **100%**  | 99.3%    | 99.5%  | 93.3%     |
+| 50 km/h        | 98.5%     | 98.0%    | 98.9%  | 89.9%     |
+| 60 km/h        | 97.8%     | 95.3%    | 98.5%  | 75.7%     |
+| 70 km/h        | **100%**  | 95.1%    | 98.5%  | 78.8%     |
+| 80 km/h        | 93.4%     | 99.3%    | 99.1%  | 84.6%     |
+| 100 km/h       | 97.4%     | 99.2%    | 99.0%  | 82.9%     |
+| 120 km/h       | 99.6%     | 98.6%    | 99.4%  | 86.8%     |
+| speed-sign-end | 98.4%     | **100%** | 99.5%  | 95.9%     |
 
 ## 🚀 Quick Start
 

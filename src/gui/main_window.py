@@ -11,17 +11,20 @@ from pathlib import Path
 
 from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtGui import QIcon
 
 project_root = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from PySide6.QtWidgets import QMainWindow, QApplication, QFileDialog, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSlider, QLabel, QFrame
+from PySide6.QtWidgets import QMainWindow, QApplication, QFileDialog, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QSlider, QLabel, QSplitter
 from PySide6.QtCore import Qt, QThread, Signal, QUrl
 from PySide6.QtGui import QPixmap, QImage, QKeySequence, QShortcut, QDragEnterEvent, QDropEvent
 
 from src.core.detector import SpeedSignDetector
 from src.core.video_processor import VideoProcessor
-from src.gui.components import ControlBar, InfoBar, StatusBar, VideoControls
+from src.gui.components import InfoBar, StatusBar, VideoControls
+from src.gui.log_widget import LogWidget
+from src.gui.parameter_widget import ParameterWidget
 from src.gui.styles import AppStyles
 
 logger = logging.getLogger(__name__)
@@ -60,7 +63,7 @@ class DropZoneLabel(QLabel):
         self.setAcceptDrops(True)
         self.drop_callback = None
         self.click_callback = None
-        self.setText("📁 Click or Drag & Drop Video\n\nSupported: MP4, AVI, MOV, MKV")
+        self.setText("Click or Drag & Drop Video\n\nSupported: MP4, AVI, MOV, MKV")
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -102,7 +105,7 @@ class VideoPlayerWidget(QWidget):
         main_layout.addWidget(self.video_widget, 1)
 
         controls = QWidget()
-        controls.setStyleSheet(f"background-color: {AppStyles.COLORS['bg_darker']}; padding: 10px;")
+        controls.setStyleSheet(AppStyles.VIDEO_CONTROLS)
         controls_layout = QHBoxLayout(controls)
 
         self.play_btn = QPushButton("Play")
@@ -186,34 +189,6 @@ class VideoPlayerWidget(QWidget):
             self.play_btn.setText("Play")
 
 
-class ImageViewer(QLabel):
-
-    def __init__(self):
-        super().__init__()
-        self.setAlignment(Qt.AlignCenter)
-        self.setMinimumSize(1000, 700)
-        self.setStyleSheet(AppStyles.IMAGE_LABEL)
-        self.setAcceptDrops(True)
-        self.drop_callback = None
-        self.click_callback = None
-        self.setScaledContents(False)
-
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event: QDropEvent):
-        urls = event.mimeData().urls()
-        if urls and self.drop_callback:
-            file_path = urls[0].toLocalFile()
-            self.drop_callback(file_path)
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and self.click_callback:
-            self.click_callback()
-        super().mousePressEvent(event)
-
-
 class SimpleDetectionApp(QMainWindow):
 
     def __init__(self):
@@ -227,6 +202,8 @@ class SimpleDetectionApp(QMainWindow):
         self.current_video_path = None
         self.video_thread = None
         self.video_player = None
+        self.log_widget = None
+        self.parameter_widget = None
 
         self._setup_ui()
         self._setup_shortcuts()
@@ -235,19 +212,35 @@ class SimpleDetectionApp(QMainWindow):
 
     def _setup_ui(self):
         self.setWindowTitle("Speed Limit Detection System")
-        self.setGeometry(100, 50, 1600, 1000)
+        self.setGeometry(100, 50, 1800, 1000)
         self.setStyleSheet(AppStyles.WINDOW)
 
         icon_path = Path("assets/icon.png")
         if icon_path.exists():
-            from PySide6.QtGui import QIcon
             self.setWindowIcon(QIcon(str(icon_path)))
 
         central = QWidget()
         self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
+        main_layout = QVBoxLayout(central)
+        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+
+        self.parameter_widget = ParameterWidget()
+        self.parameter_widget.parameters_changed.connect(self._on_parameters_changed)
+        main_layout.addWidget(self.parameter_widget)
+
+        content_splitter = QSplitter(Qt.Horizontal)
+        content_splitter.setHandleWidth(2)
+        content_splitter.setStyleSheet(f"""
+            QSplitter::handle {{
+                background-color: {AppStyles.COLORS['border']};
+            }}
+        """)
+
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(15)
 
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet(AppStyles.TAB_WIDGET)
@@ -258,10 +251,23 @@ class SimpleDetectionApp(QMainWindow):
         self.tabs.addTab(self.image_tab, "Image Detection")
         self.tabs.addTab(self.video_tab, "Video Processing")
 
-        layout.addWidget(self.tabs)
+        left_layout.addWidget(self.tabs)
 
         self.status_bar = StatusBar()
-        layout.addWidget(self.status_bar)
+        left_layout.addWidget(self.status_bar)
+
+        self.log_widget = LogWidget(max_lines=1000)
+        self.log_widget.setMinimumWidth(400)
+        self.log_widget.setMaximumWidth(600)
+
+        content_splitter.addWidget(left_widget)
+        content_splitter.addWidget(self.log_widget)
+        content_splitter.setStretchFactor(0, 3)
+        content_splitter.setStretchFactor(1, 1)
+
+        main_layout.addWidget(content_splitter, 1)
+
+        self.log_widget.add_log("Application started", "INFO")
 
     def _create_image_tab(self):
         tab = QWidget()
@@ -269,13 +275,36 @@ class SimpleDetectionApp(QMainWindow):
         layout.setSpacing(15)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        self.control_bar = ControlBar()
-        self.control_bar.load_folder.connect(self._load_folder)
-        self.control_bar.previous.connect(self._previous_image)
-        self.control_bar.next.connect(self._next_image)
-        self.control_bar.detect.connect(self._detect_current)
-        self.control_bar.confidence_changed.connect(self._on_confidence_changed)
-        layout.addWidget(self.control_bar)
+        controls_layout = QHBoxLayout()
+        controls_layout.setSpacing(10)
+
+        load_btn = QPushButton("Load Folder")
+        load_btn.setStyleSheet(AppStyles.BUTTON)
+        load_btn.clicked.connect(self._load_folder)
+        controls_layout.addWidget(load_btn)
+
+        controls_layout.addStretch()
+
+        prev_btn = QPushButton("<- Previous (A)")
+        prev_btn.setStyleSheet(AppStyles.BUTTON)
+        prev_btn.clicked.connect(self._previous_image)
+        prev_btn.setEnabled(False)
+        self.prev_btn = prev_btn
+        controls_layout.addWidget(prev_btn)
+
+        next_btn = QPushButton("Next (D) ->")
+        next_btn.setStyleSheet(AppStyles.BUTTON)
+        next_btn.clicked.connect(self._next_image)
+        next_btn.setEnabled(False)
+        self.next_btn = next_btn
+        controls_layout.addWidget(next_btn)
+
+        detect_btn = QPushButton("Detect (Space)")
+        detect_btn.setStyleSheet(AppStyles.BUTTON_SUCCESS)
+        detect_btn.clicked.connect(self._detect_current)
+        controls_layout.addWidget(detect_btn)
+
+        layout.addLayout(controls_layout)
 
         self.info_bar = InfoBar()
         layout.addWidget(self.info_bar)
@@ -295,13 +324,6 @@ class SimpleDetectionApp(QMainWindow):
         layout.addWidget(self.image_container, 1)
 
         return tab
-
-    def _on_confidence_changed(self, conf):
-        """Update detector confidence threshold"""
-        if self.detector:
-            self.detector.config['model']['confidence_threshold'] = conf
-            self.cache = {}  # Clear cache when confidence changes
-            self.status_bar.set_status(f"Confidence threshold: {conf:.2f}")
 
     def _create_video_tab(self):
         tab = QWidget()
@@ -343,14 +365,29 @@ class SimpleDetectionApp(QMainWindow):
         try:
             self.detector = SpeedSignDetector()
             self.video_processor = VideoProcessor(self.detector)
+            self.video_processor.set_log_callback(self.log_widget.add_log)
 
             if self.detector.is_model_loaded():
                 self.status_bar.set_status("Model loaded successfully")
+                self.log_widget.add_log("Model loaded successfully", "SUCCESS")
             else:
                 self.status_bar.set_status("Model not found, train first", "error")
+                self.log_widget.add_log("Model not found", "ERROR")
         except Exception as e:
             logger.error(f"Detector init failed: {e}")
             self.status_bar.set_status(f"Error: {e}", "error")
+            self.log_widget.add_log(f"Detector init failed: {e}", "ERROR")
+
+    def _on_parameters_changed(self, params):
+        if self.detector:
+            conf = params.get('confidence_threshold')
+            iou = params.get('iou_threshold')
+
+            self.detector.update_parameters(conf=conf, iou=iou)
+            self.cache = {}
+
+            self.status_bar.set_status(f"Parameters updated: Conf={conf:.2f}, IoU={iou:.2f}")
+            self.log_widget.add_log(f"Parameters updated: Conf={conf:.2f}, IoU={iou:.2f}", "INFO")
 
     def _load_test_images(self):
         test_folder = Path("datasets/test_images")
@@ -383,11 +420,14 @@ class SimpleDetectionApp(QMainWindow):
         if self.image_files:
             self.current_index = 0
             self.cache = {}
-            self.control_bar.enable_navigation(True)
+            self.prev_btn.setEnabled(True)
+            self.next_btn.setEnabled(True)
             self._show_current_image()
             self.status_bar.set_status(f"Loaded {len(self.image_files)} images")
+            self.log_widget.add_log(f"Loaded {len(self.image_files)} images from {folder_path.name}", "SUCCESS")
         else:
             self.status_bar.set_status("No images found", "warning")
+            self.log_widget.add_log("No images found in folder", "WARNING")
 
     def _show_current_image(self):
         if not self.image_files:
@@ -446,14 +486,23 @@ class SimpleDetectionApp(QMainWindow):
             result_image, detections = self.cache[current_file]
             self._display_image(result_image, self.image_label)
             self._update_status(detections, cached=True)
+            self.log_widget.add_log(f"Loaded cached detection for {current_file.name}", "INFO")
             return
 
         self.status_bar.set_status("Processing...")
+        self.log_widget.add_log(f"Processing {current_file.name}", "INFO")
+
         result_image, detections = self.detector.detect(self.current_image)
 
         self.cache[current_file] = (result_image, detections)
         self._display_image(result_image, self.image_label)
         self._update_status(detections)
+
+        if detections:
+            det_str = ', '.join([f"{d['speed_limit']} km/h ({d['confidence']:.2f})" for d in detections if d.get('speed_limit')])
+            self.log_widget.add_log(f"Detected: {det_str}", "SUCCESS")
+        else:
+            self.log_widget.add_log("No signs detected", "WARNING")
 
     def _update_status(self, detections, cached=False):
         cache_text = " (cached)" if cached else ""
@@ -489,6 +538,7 @@ class SimpleDetectionApp(QMainWindow):
             self._set_video(file_path)
         else:
             self.status_bar.set_status("Invalid video format", "error")
+            self.log_widget.add_log(f"Invalid video format: {path.suffix}", "ERROR")
 
     def _set_video(self, video_path):
         input_dir = Path("datasets/test_videos/input")
@@ -530,8 +580,10 @@ class SimpleDetectionApp(QMainWindow):
 
             self.video_controls.set_video_loaded(True)
             self.status_bar.set_status(f"Video loaded: {video_name}")
+            self.log_widget.add_log(f"Video loaded: {video_name} ({width}x{height}, {fps}fps)", "SUCCESS")
         else:
             self.status_bar.set_status("Cannot open video file", "error")
+            self.log_widget.add_log(f"Cannot open video file: {video_name}", "ERROR")
 
     def _process_video(self):
         if not self.current_video_path:
@@ -545,6 +597,7 @@ class SimpleDetectionApp(QMainWindow):
 
         self.video_controls.set_processing(True)
         self.status_bar.set_status("Processing video...")
+        self.log_widget.add_log(f"Started processing video: {input_path.name}", "INFO")
 
         self.video_thread = VideoProcessingThread(
             self.video_processor,
@@ -565,12 +618,14 @@ class SimpleDetectionApp(QMainWindow):
 
         if success:
             self.status_bar.set_status(f"Video saved: {Path(result).name}")
+            self.log_widget.add_log(f"Video processing completed: {Path(result).name}", "SUCCESS")
 
             if self.video_player:
                 self.video_player.load_video(result)
 
         else:
             self.status_bar.set_status(f"Processing failed: {result}", "error")
+            self.log_widget.add_log(f"Video processing failed: {result}", "ERROR")
 
 
 if __name__ == "__main__":

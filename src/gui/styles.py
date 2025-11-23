@@ -286,3 +286,63 @@ class AppStyles:
             border-radius: 3px;
         }}
     """
+
+    LOG_TEXT_EDIT = f"""
+        QTextEdit {{
+            background-color: {COLORS['bg_darker']};
+            color: {COLORS['text_primary']};
+            border: 1px solid {COLORS['border']};
+            border-radius: 6px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11px;
+            padding: 8px;
+        }}
+    """
+
+    GROUP_BOX = f"""
+        QGroupBox {{
+            color: {COLORS['text_primary']};
+            border: 2px solid {COLORS['border']};
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 13px;
+            padding-top: 15px;
+            margin-top: 10px;
+        }}
+        QGroupBox::title {{
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            padding: 0 10px;
+            background-color: {COLORS['bg_dark']};
+        }}
+    """
+
+    CHECKBOX = f"""
+        QCheckBox {{
+            color: {COLORS['text_primary']};
+            font-size: 12px;
+            spacing: 8px;
+        }}
+        QCheckBox::indicator {{
+            width: 18px;
+            height: 18px;
+            border: 2px solid {COLORS['border']};
+            border-radius: 4px;
+            background-color: {COLORS['bg_darker']};
+        }}
+        QCheckBox::indicator:checked {{
+            background-color: {COLORS['accent']};
+            border-color: {COLORS['accent']};
+        }}
+        QCheckBox::indicator:hover {{
+            border-color: {COLORS['accent_hover']};
+        }}
+    """
+
+    VIDEO_CONTROLS = f"""
+        QWidget {{
+            background-color: {COLORS['bg_darker']};
+            padding: 10px;
+            border-radius: 6px;
+        }}
+    """

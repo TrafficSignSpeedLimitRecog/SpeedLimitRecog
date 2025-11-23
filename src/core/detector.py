@@ -52,16 +52,14 @@ class SpeedSignDetector:
             logger.error(f"Model load failed: {e}")
             self.model = None
 
-    def detect(self, image, conf_override=None):
-        """Detect speed signs in image
-        """
+    def detect(self, image, conf_override=None, iou_override=None):
         if self.model is None:
             return image, []
 
         try:
             conf = conf_override if conf_override is not None else self.config.get('model', {}).get(
                 'confidence_threshold', 0.5)
-            iou = self.config.get('model', {}).get('iou_threshold', 0.45)
+            iou = iou_override if iou_override is not None else self.config.get('model', {}).get('iou_threshold', 0.45)
 
             results = self.model(image, conf=conf, iou=iou, verbose=False)
 
@@ -103,6 +101,12 @@ class SpeedSignDetector:
             return int(class_name)
         except:
             return None
+
+    def update_parameters(self, conf=None, iou=None):
+        if conf is not None:
+            self.config['model']['confidence_threshold'] = conf
+        if iou is not None:
+            self.config['model']['iou_threshold'] = iou
 
     @staticmethod
     def _draw_detection(image, detection):

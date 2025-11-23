@@ -3,7 +3,6 @@ Speed Limit Recognition System
 """
 
 import sys
-import argparse
 import logging
 from pathlib import Path
 
@@ -23,16 +22,5 @@ def run_gui():
     sys.exit(app.exec())
 
 
-def main():
-    parser = argparse.ArgumentParser(description='Speed Limit Recognition System')
-    parser.add_argument('--gui', action='store_true', help='Launch GUI mode')
-    args = parser.parse_args()
-
-    if args.gui:
-        run_gui()
-    else:
-        print("Use --gui to launch detection interface")
-
-
 if __name__ == "__main__":
-    main()
+    run_gui()

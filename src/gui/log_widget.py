@@ -1,9 +1,8 @@
 import time
 from pathlib import Path
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QCheckBox, QLabel, QFileDialog, \
-    QMessageBox
-
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
+                               QTextEdit, QCheckBox, QLabel, QFileDialog, QMessageBox)
 from .styles import AppStyles
 
 
@@ -17,34 +16,69 @@ class LogWidget(QWidget):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
+        header_layout = QHBoxLayout()
+        header_layout.setSpacing(10)
+
+        header_label = QLabel("Logs")
+        header_label.setStyleSheet(f"color: {AppStyles.COLORS['text_primary']}; font-size: 14px; font-weight: bold;")
+        header_layout.addWidget(header_label)
+
+        header_layout.addStretch()
+
+        self.info_label = QLabel("0 logs")
+        self.info_label.setStyleSheet(f"color: {AppStyles.COLORS['accent']}; font-size: 11px; font-weight: 600;")
+        header_layout.addWidget(self.info_label)
+
+        layout.addLayout(header_layout)
+
         controls_layout = QHBoxLayout()
-        controls_layout.setSpacing(8)
+        controls_layout.setSpacing(6)
 
         clear_btn = QPushButton("Clear")
-        clear_btn.setMaximumWidth(80)
-        clear_btn.setStyleSheet(AppStyles.BUTTON)
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #2d2d2d;
+                border-color: #007acc;
+            }
+        """)
         clear_btn.clicked.connect(self.clear_logs)
         controls_layout.addWidget(clear_btn)
 
         export_btn = QPushButton("Export")
-        export_btn.setMaximumWidth(80)
-        export_btn.setStyleSheet(AppStyles.BUTTON)
+        export_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #2d2d2d;
+                border-color: #007acc;
+            }
+        """)
         export_btn.clicked.connect(self.export_logs)
         controls_layout.addWidget(export_btn)
 
-        self.auto_scroll_check = QCheckBox("Auto-scroll")
+        self.auto_scroll_check = QCheckBox("Auto")
         self.auto_scroll_check.setChecked(True)
         self.auto_scroll_check.setStyleSheet(AppStyles.CHECKBOX)
         controls_layout.addWidget(self.auto_scroll_check)
 
         controls_layout.addStretch()
-
-        self.info_label = QLabel("Ready")
-        self.info_label.setStyleSheet(f"color: {AppStyles.COLORS['accent']}; font-size: 11px; font-weight: 600;")
-        controls_layout.addWidget(self.info_label)
 
         layout.addLayout(controls_layout)
 
@@ -53,6 +87,34 @@ class LogWidget(QWidget):
         self.log_text.setStyleSheet(AppStyles.LOG_TEXT_EDIT)
         self.log_text.document().setMaximumBlockCount(self.max_lines)
         layout.addWidget(self.log_text)
+
+        bottom_layout = QHBoxLayout()
+
+        reset_btn = QPushButton("Reset to Defaults")
+        reset_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1e1e1e;
+                color: #ffffff;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                padding: 6px 16px;
+                font-size: 11px;
+            }
+            QPushButton:hover {
+                background-color: #2d2d2d;
+                border-color: #007acc;
+            }
+        """)
+        reset_btn.clicked.connect(self._reset_defaults)
+        bottom_layout.addWidget(reset_btn)
+
+        bottom_layout.addStretch()
+
+        layout.addLayout(bottom_layout)
+
+    def _reset_defaults(self):
+        self.auto_scroll_check.setChecked(True)
+        self.add_log("Settings reset to defaults", "INFO")
 
     def add_log(self, message, level="INFO"):
         timestamp = time.strftime("%H:%M:%S")
@@ -76,12 +138,12 @@ class LogWidget(QWidget):
         plain_log = f"[{timestamp}] [{level}] {message}"
         self.log_lines.append(plain_log)
 
-        self.info_label.setText(f"{len(self.log_lines)} log entries")
+        self.info_label.setText(f"{len(self.log_lines)} logs")
 
     def clear_logs(self):
         self.log_text.clear()
         self.log_lines.clear()
-        self.info_label.setText("Logs cleared")
+        self.info_label.setText("0 logs")
 
     def export_logs(self):
         if not self.log_lines:

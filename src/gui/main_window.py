@@ -35,18 +35,22 @@ class VideoProcessingThread(QThread):
     progress = Signal(int)
     finished = Signal(bool, str)
 
-    def __init__(self, processor, input_path, output_path):
+    def __init__(self, processor, input_path, output_path, frame_skip=1, batch_size=8):
         super().__init__()
         self.processor = processor
         self.input_path = input_path
         self.output_path = output_path
+        self.frame_skip = frame_skip
+        self.batch_size = batch_size
 
     def run(self):
         try:
             success = self.processor.process_video(
                 self.input_path,
                 self.output_path,
-                progress_callback=self.progress.emit
+                progress_callback=self.progress.emit,
+                skip_frames=self.frame_skip,
+                batch_size=self.batch_size
             )
             self.finished.emit(success, self.output_path)
         except Exception as e:
@@ -595,19 +599,38 @@ class SimpleDetectionApp(QMainWindow):
 
         output_path = str(output_dir / f"{input_path.stem}_detected{input_path.suffix}")
 
+        params = self.parameter_widget.get_parameters()
+        frame_skip = params.get('frame_skip', 1)
+        batch_size = params.get('batch_size', 8)
+
         self.video_controls.set_processing(True)
         self.status_bar.set_status("Processing video...")
         self.log_widget.add_log(f"Started processing video: {input_path.name}", "INFO")
+        self.log_widget.add_log(f"Frame skip: {frame_skip} (every {self._ordinal(frame_skip)} frame)", "INFO")
 
         self.video_thread = VideoProcessingThread(
             self.video_processor,
             self.current_video_path,
-            output_path
+            output_path,
+            frame_skip,
+            batch_size
         )
 
         self.video_thread.progress.connect(self._on_video_progress)
         self.video_thread.finished.connect(self._on_video_finished)
         self.video_thread.start()
+
+    @staticmethod
+    def _ordinal(n):
+        if n == 1:
+            return "1st"
+        elif n == 2:
+            return "2nd"
+        elif n == 3:
+            return "3rd"
+        else:
+            return f"{n}th"
+
 
     def _on_video_progress(self, progress):
         self.video_controls.update_progress(progress)

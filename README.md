@@ -26,14 +26,14 @@ Speed limit sign detection using YOLOv8. Detects speed limit signs in images and
 
 The model was trained on the `yolov8m` architecture with aggressive augmentation to ensure stability on real-world video footage.
 
-| Metric              | Value                | Notes                                   |
-|---------------------|----------------------|-----------------------------------------|
-| **mAP@50**          | **98.9%**            | Extremely reliable detection            |
-| **mAP@50-95**       | **84.4%**            | High precision bounding boxes           |
-| **Precision**       | **99.1%**            | Almost zero false positives (Excellent) |
-| **Recall**          | **98.1%**            | Misses less than 2% of signs            |
-| **Inference Speed** | **3.4ms (~294 FPS)** | Benchmarked on RTX 4090 (Batch=16)      |
-| **Training Time**   | **2.0h**             | 300 epochs (Early Stopping at 196)      |
+| Metric              | Value                | Notes                              |
+|---------------------|----------------------|------------------------------------|
+| **mAP@50**          | **98.9%**            | Extremely reliable detection       |
+| **mAP@50-95**       | **84.4%**            | High precision bounding boxes      |
+| **Precision**       | **99.1%**            | Almost zero false positives        |
+| **Recall**          | **98.1%**            | Misses less than 2% of signs       |
+| **Inference Speed** | **3.4ms (~294 FPS)** | Benchmarked on RTX 4090 (Batch=16) |
+| **Training Time**   | **2.0h**             | 300 epochs (Early Stopping at 196) |
 
 ### Per-Class Performance (Test Set)
 
@@ -69,14 +69,14 @@ Switching to the **Medium** model with aggressive augmentation successfully solv
 
 To ensure optimal performance, we conducted a comparative analysis between the **Medium** and **Large** YOLOv8 architectures. Despite the theoretical advantage of the Large model (more parameters), our empirical tests on real-world video data and validation metrics demonstrated that **YOLOv8m is superior** for this specific use case.
 
-| Feature / Metric               | YOLOv8m (Medium) | YOLOv8l (Large) |   Winner   | Analysis                                                                                                 |
-|:-------------------------------|:----------------:|:---------------:|:----------:|:---------------------------------------------------------------------------------------------------------|
-| **Parameters**                 |      25.9 M      |     43.7 M      | **Medium** | The smaller model generalizes better on our ~6k dataset, showing less tendency to overfit[cite: 4, 5].   |
-| **mAP@50-95** (Accuracy)       |    **84.4%**     |      83.4%      | **Medium** | Model M provides more precise bounding box localization[cite: 4, 5].                                     |
-| **Precision** (Confidence)     |    **99.1%**     |      98.8%      | **Medium** | Fewer False Positives observed with the Medium model[cite: 4, 5].                                        |
-| **Inference Speed** (RTX 4090) |   **~3.4 ms**    |     ~5.4 ms     | **Medium** | Model M is approx. **37% faster**, leaving more resources for the video processing pipeline[cite: 4, 5]. |
-| **Weight Decay**               |      0.0005      |     0.0005      |     -      | Identical regularization settings used[cite: 4, 5].                                                      |
-| **Training Outcome**           | Best Epoch: 176  | Best Epoch: 166 |     -      | Both models converged similarly, but M maintained better stability[cite: 4, 5].                          |
+| Feature / Metric               | YOLOv8m (Medium) | YOLOv8l (Large) |   Winner   | Analysis                                                                                     |
+|:-------------------------------|:----------------:|:---------------:|:----------:|:---------------------------------------------------------------------------------------------|
+| **Parameters**                 |      25.9 M      |     43.7 M      | **Medium** | The smaller model generalizes better on our ~6k dataset, showing less tendency to overfit.   |
+| **mAP@50-95** (Accuracy)       |    **84.4%**     |      83.4%      | **Medium** | Model M provides more precise bounding box localization.                                     |
+| **Precision** (Confidence)     |    **99.1%**     |      98.8%      | **Medium** | Fewer False Positives observed with the Medium model.                                        |
+| **Inference Speed** (RTX 4090) |   **~3.4 ms**    |     ~5.4 ms     | **Medium** | Model M is approx. **37% faster**, leaving more resources for the video processing pipeline. |
+| **Weight Decay**               |      0.0005      |     0.0005      |     -      | Identical regularization settings used.                                                      |
+| **Training Outcome**           | Best Epoch: 176  | Best Epoch: 166 |     -      | Both models converged similarly, but M maintained better stability.                          |
 
 **Conclusion:**
 We selected **YOLOv8m** as the production model. It offers a superior balance between speed and precision. Its higher **mAP@50-95** score ensures more stable detections on video footage (e.g., dashcam recordings), eliminating the bounding box flickering often observed in over-parameterized models.
@@ -318,5 +318,30 @@ MIT License
 
 - [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics)
 - [Roboflow](https://roboflow.com/)
+
+## 👥 Team & Responsibilities
+
+The project was delivered by an engineering team with responsibilities divided by system modules. Each member was responsible for the implementation of their assigned components.
+
+### **Jakub Kleban** - *Training Optimization & Backend Implementation*
+* **Trainer Implementation:** Development of the Trainer class and the logic managing the training lifecycle (callbacks, checkpoints).
+* **Augmentation Logic:** Coding the dynamic image transformation pipeline (HSV, MixUp) to robustify the model against real-world driving conditions.
+* **Analysis & Optimization:** Implementation of validation scripts and selection of the optimal network architecture (migration from `s` to `m`) based on metric performance.
+
+### **Łukasz Kaszewski** - *Detector Engine & Data Tools*
+* **Detection Engine:** Co-development of the `SpeedSignDetector` class logic - implementing model loading, weight management, and inference post-processing.
+* **Dataset Tooling:** Design and programming of the automated frame extractor (`yt_cut.py`) and label mapping scripts (Label Resolving).
+* **Component Integration:** Programming the communication layer between the detection backend and the application data structures.
+
+### **Oskar Jaworski** - *System Architecture & Multithreaded Processing*
+* **Video Pipeline:** Implementation of the multi-threaded video processing core (Producer-Consumer pattern) in `video_processor.py`.
+* **GPU Optimization:** Development of the **Batch Processing** mechanism (queuing and VRAM batch transfer) for RTX 4090 optimization.
+* **Refactoring & GUI:** Code merging, refactoring of the main application loop, and implementation of real-time parameter controls.
+
+### 🤝 Collaborative Efforts
+Beyond individual specializations, the entire team jointly contributed to:
+* **Dataset Creation:** Collaborative annotation, cleaning, and aggregation of the 6,300+ image dataset in Roboflow.
+* **Quality Assurance (QA):** System-wide testing, edge-case debugging, and verification of detection accuracy on real-world video/dashcam footage.
+* **Documentation:** Joint preparation of the technical documentation, final project report, and this README file.
 
 ---

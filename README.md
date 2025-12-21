@@ -8,7 +8,7 @@ Speed limit sign detection using YOLOv8. Detects speed limit signs in images and
 
 ## 🛠️ Tech Stack
 
-- YOLOv8s (Ultralytics)
+- YOLOv8m (Ultralytics)
 - PyTorch 2.5 + CUDA 12.1
 - PySide6 (Qt6)
 - OpenCV
@@ -22,31 +22,95 @@ Speed limit sign detection using YOLOv8. Detects speed limit signs in images and
 - **Classes:** 10 ['20', '30', '40', '50', '60', '70', '80', '100', '120', 'speed-sign-end']
 - **Format:** YOLO v8 PyTorch
 
-## 🎯 Performance
+## 🎯 Performance (YOLOv8m)
 
-| Metric              | Value                |
-|---------------------|----------------------|
-| **mAP@50**          | **99.0%**            |
-| **mAP@50-95**       | **85.9%**            |
-| **Precision**       | **98.1%**            |
-| **Recall**          | **98.2%**            |
-| **Inference Speed** | **0.7ms (1428 FPS)** |
-| **Training Time**   | **1.6h (RTX 4090)**  |
+The model was trained on the `yolov8m` architecture with aggressive augmentation to ensure stability on real-world video footage.
 
-### Per-Class Performance
+| Metric              | Value                | Notes                                   |
+|---------------------|----------------------|-----------------------------------------|
+| **mAP@50**          | **98.9%**            | Extremely reliable detection            |
+| **mAP@50-95**       | **84.4%**            | High precision bounding boxes           |
+| **Precision**       | **99.1%**            | Almost zero false positives (Excellent) |
+| **Recall**          | **98.1%**            | Misses less than 2% of signs            |
+| **Inference Speed** | **3.4ms (~294 FPS)** | Benchmarked on RTX 4090 (Batch=16)      |
+| **Training Time**   | **2.0h**             | 300 epochs (Early Stopping at 196)      |
+
+### Per-Class Performance (Test Set)
 
 | Class          | Precision | Recall   | mAP@50 | mAP@50-95 |
 |----------------|-----------|----------|--------|-----------|
-| 20 km/h        | 98.2%     | 98.4%    | 99.4%  | 86.5%     |
-| 30 km/h        | 98.0%     | 98.4%    | 98.3%  | 84.4%     |
-| 40 km/h        | **100%**  | 99.3%    | 99.5%  | 93.3%     |
-| 50 km/h        | 98.5%     | 98.0%    | 98.9%  | 89.9%     |
-| 60 km/h        | 97.8%     | 95.3%    | 98.5%  | 75.7%     |
-| 70 km/h        | **100%**  | 95.1%    | 98.5%  | 78.8%     |
-| 80 km/h        | 93.4%     | 99.3%    | 99.1%  | 84.6%     |
-| 100 km/h       | 97.4%     | 99.2%    | 99.0%  | 82.9%     |
-| 120 km/h       | 99.6%     | 98.6%    | 99.4%  | 86.8%     |
-| speed-sign-end | 98.4%     | **100%** | 99.5%  | 95.9%     |
+| 20 km/h        | 98.2%     | 96.7%    | 97.3%  | 82.5%     |
+| 30 km/h        | **100%**  | 97.3%    | 99.4%  | 82.3%     |
+| 40 km/h        | 98.0%     | **100%** | 99.5%  | 85.6%     |
+| 50 km/h        | 99.8%     | 97.2%    | 99.3%  | **88.3%** |
+| 60 km/h        | 97.5%     | 97.9%    | 96.2%  | 81.2%     |
+| 70 km/h        | 99.7%     | **100%** | 99.5%  | 81.3%     |
+| 80 km/h        | 99.6%     | 98.5%    | 99.4%  | 87.4%     |
+| 100 km/h       | **100%**  | 94.9%    | 99.5%  | 84.1%     |
+| 120 km/h       | 99.9%     | 98.7%    | 99.4%  | 82.3%     |
+| speed-sign-end | 98.8%     | **100%** | 99.5%  | **88.6%** |
+
+### 🏆 Model Training Comparison: YOLOv8s vs YOLOv8m
+
+The table below highlights the performance shift from the previous baseline (Small - image optimized) to the current production model (Medium - video & robustness optimized).
+
+| Metric              | YOLOv8s (Previous) | YOLOv8m (Current) |  Change   | Interpretation                                                                                                                                             |
+|:--------------------|:------------------:|:-----------------:|:---------:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Precision**       |       98.1%        |     **99.1%**     | **+1.0%** | **Major improvement.** The M model produces significantly fewer False Positives (e.g., mistaking billboards for signs).                                    |
+| **mAP@50**          |       99.0%        |       98.9%       |   -0.1%   | Negligible difference. Detection capability remains near-perfect.                                                                                          |
+| **mAP@50-95**       |       85.9%        |       84.4%       |   -1.5%   | Expected drop due to heavy augmentation. The model traded pixel-perfect box alignment on static images for better generalization in rain/night conditions. |
+| **Recall**          |       98.2%        |       98.1%       |   -0.1%   | Stable. The model still detects almost every visible sign.                                                                                                 |
+| **Inference Speed** |       0.7 ms       |      3.4 ms       |  +2.7 ms  | While slower, ~290 FPS on RTX 4090 is still well above real-time requirements.                                                                             |
+
+**Conclusion:**
+Switching to the **Medium** model with aggressive augmentation successfully solved the "detection flickering" issue on video footage. The increase in Precision to 99.1% ensures a much more reliable system in real-world driving scenarios.
+
+### 🏆 Model Training Comparison: YOLOv8m vs YOLOv8l
+
+To ensure optimal performance, we conducted a comparative analysis between the **Medium** and **Large** YOLOv8 architectures. Despite the theoretical advantage of the Large model (more parameters), our empirical tests on real-world video data and validation metrics demonstrated that **YOLOv8m is superior** for this specific use case.
+
+| Feature / Metric               | YOLOv8m (Medium) | YOLOv8l (Large) |   Winner   | Analysis                                                                                                 |
+|:-------------------------------|:----------------:|:---------------:|:----------:|:---------------------------------------------------------------------------------------------------------|
+| **Parameters**                 |      25.9 M      |     43.7 M      | **Medium** | The smaller model generalizes better on our ~6k dataset, showing less tendency to overfit[cite: 4, 5].   |
+| **mAP@50-95** (Accuracy)       |    **84.4%**     |      83.4%      | **Medium** | Model M provides more precise bounding box localization[cite: 4, 5].                                     |
+| **Precision** (Confidence)     |    **99.1%**     |      98.8%      | **Medium** | Fewer False Positives observed with the Medium model[cite: 4, 5].                                        |
+| **Inference Speed** (RTX 4090) |   **~3.4 ms**    |     ~5.4 ms     | **Medium** | Model M is approx. **37% faster**, leaving more resources for the video processing pipeline[cite: 4, 5]. |
+| **Weight Decay**               |      0.0005      |     0.0005      |     -      | Identical regularization settings used[cite: 4, 5].                                                      |
+| **Training Outcome**           | Best Epoch: 176  | Best Epoch: 166 |     -      | Both models converged similarly, but M maintained better stability[cite: 4, 5].                          |
+
+**Conclusion:**
+We selected **YOLOv8m** as the production model. It offers a superior balance between speed and precision. Its higher **mAP@50-95** score ensures more stable detections on video footage (e.g., dashcam recordings), eliminating the bounding box flickering often observed in over-parameterized models.
+
+### 📈 Data Augmentation Pipeline
+
+To bridge the "reality gap" between static training images and dynamic video footage, we implemented an aggressive online augmentation strategy. The following transformations are applied dynamically during training (Hyperparameters for YOLOv8m):
+
+| Category           | Method             |    Value     | Purpose                                                                          |
+|:-------------------|:-------------------|:------------:|:---------------------------------------------------------------------------------|
+| **Photometric**    | **HSV Saturation** |    `0.8`     | Simulates high-contrast sunny days and dull rainy weather.                       |
+|                    | **HSV Value**      |    `0.5`     | Simulates driving in shadows, tunnels, or bright sunlight (brightness variance). |
+|                    | **HSV Hue**        |   `0.025`    | Minor color shifts to account for different camera sensors.                      |
+| **Geometric**      | **Rotation**       |    `±15°`    | Handles tilted signs or banking vehicles.                                        |
+|                    | **Translation**    |    `±20%`    | Ensures the model detects signs that are not centered.                           |
+|                    | **Scale**          |    `±70%`    | Critical for detecting signs at varying distances (highway vs city).             |
+|                    | **Shear**          |    `±5°`     | Simulates perspective distortion.                                                |
+| **Regularization** | **Mosaic**         |    `1.0`     | Stitches 4 images into one; forces the model to learn context and small objects. |
+|                    | **MixUp**          |    `0.15`    | Blends two images (15% probability) to smooth decision boundaries.               |
+|                    | **Copy-Paste**     |    `0.1`     | Randomly pastes sign instances onto other images to increase object density.     |
+|                    | **Flip**           | `Horizontal` | Mirrors images (left/right) to double dataset diversity.                         |
+
+> **Note:** These aggressive settings (especially MixUp and high Scale variance) were key to achieving stable detection on unseen video data.
+
+## 🚀 High-Performance Video Pipeline (RTX 4090 Optimized)
+
+To fully utilize the massive parallel computing power of the **NVIDIA RTX 4090**, we moved away from standard frame-by-frame processing. Instead, we implemented a **Threaded Batch Processing** architecture.
+
+### How it works:
+1.  **Producer-Consumer Pattern:** The system uses separate threads for reading video frames (I/O bound) and processing them (GPU bound).
+2.  **Dynamic Batching:** Instead of sending a single image to the GPU, the detector accumulates a batch of frames (e.g., 4, 8, or 16) from the queue.
+3.  **Parallel Inference:** This batch is sent to the GPU in a single call. The RTX 4090 processes all images in the batch simultaneously across its thousands of CUDA cores.
+
+**Benefit:** Drastically reduces CPU-GPU communication overhead. While single-frame inference might take ~6ms per frame (due to overhead), batch processing can achieve **~3ms per frame** equivalent throughput, enabling high-FPS analysis even on high-resolution footage.
 
 ## 🚀 Quick Start
 

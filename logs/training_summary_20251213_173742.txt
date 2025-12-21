@@ -1,0 +1,35 @@
+================================================================================
+TRAINING SUMMARY
+================================================================================
+Start Time: 2025-12-13 17:37:42
+End Time: 2025-12-13 19:38:37
+Duration: 2:00:55.067696
+Model: yolov8m.pt
+Device: cuda
+Epochs: 300 (with patience=20 early stopping)
+Batch Size: 16
+Image Size: 640x640
+Optimizer: auto
+
+Augmentation Settings:
+  - HSV: h=0.025, s=0.8, v=0.5
+  - Geometric: degrees=15, translate=0.2, scale=0.7, shear=5
+  - Flip: horizontal=0.5, vertical=0.0
+  - Mosaic: 1.0
+  - Mixup: 0.15
+  - Copy-Paste: 0.1
+  - Dropout: 0.2
+
+Final Validation Results (Test Set):
+  mAP@50: 0.9890
+  mAP@50-95: 0.8435
+  Precision: 0.9914
+  Recall: 0.9813
+
+Model Location:
+  models/speed_limit_recog/weights/best.pt
+  models/speed_limit_recog/weights/last.pt
+
+Plots and Logs:
+  models/speed_limit_recog/
+================================================================================

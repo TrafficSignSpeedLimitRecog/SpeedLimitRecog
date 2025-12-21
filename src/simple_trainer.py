@@ -5,6 +5,7 @@ YOLO Trainer for Speed Limit Recognition
 import torch
 import logging
 import sys
+
 from datetime import datetime
 from ultralytics import YOLO
 from pathlib import Path
@@ -32,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class SimpleYOLOTrainer:
 
-    def __init__(self, model_name="yolov8s.pt"):
+    def __init__(self, model_name="yolov8m.pt"):
         self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.training_start_time = None
@@ -47,41 +48,56 @@ class SimpleYOLOTrainer:
             model = YOLO(self.model_name)
 
             results = model.train(
-                data=data_config,
-                epochs=epochs,
-                imgsz=640,
-                batch=16,
-                patience=20,
-                save=True,
-                plots=True,
-                name='speed_limit_recog',
-                project='models',
-                exist_ok=True,
-                device=self.device,
-                workers=8,
-                amp=True,
-                cache=False,
-                optimizer='auto',
-                weight_decay=0.0005,
-                warmup_epochs=3.0,
-                hsv_h=0.025,
-                hsv_s=0.8,
-                hsv_v=0.5,
-                degrees=15.0,
-                translate=0.2,
-                scale=0.7,
-                shear=5.0,
-                perspective=0.001,
-                flipud=0.0,
-                fliplr=0.5,
-                mosaic=1.0,
-                mixup=0.15,
-                copy_paste=0.1,
-                box=7.5,
-                cls=0.5,
-                dfl=1.5,
-                close_mosaic=15,
-                dropout=0.2,
+                # --- General Training Configuration ---
+                data=data_config,           # Path to dataset YAML file (defines train/val/test paths).
+                epochs=epochs,              # Total number of training iterations.
+                imgsz=640,                  # Input image size (pixels). Higher = better small obj detection, slower speed.
+                batch=16,                   # Batch size. Number of images processed at once. Reduce if CUDA OOM error.
+                patience=20,                # Early Stopping: Stop training if metric doesn't improve for 20 epochs.
+                save=True,                  # Save model checkpoints (best.pt and last.pt).
+                plots=True,                 # Generate training graphs (loss curves, confusion matrix, labels).
+
+                # --- Output Management ---
+                name='speed_limit_recog',   # Subdirectory name for saving results.
+                project='models',           # Root directory where results are saved.
+                exist_ok=True,              # If True, does not error if the directory already exists (overwrites/appends).
+
+                # --- Hardware & Performance ---
+                device=self.device,         # Computation device ('cuda' for GPU or 'cpu').
+                workers=8,                  # Number of CPU threads for data loading (prevents GPU waiting for data).
+                amp=True,                   # Automatic Mixed Precision (FP16). Faster training, uses less VRAM.
+                cache=False,                # Data caching. Set to True (RAM) if you have lots of RAM (>32GB) for faster training.
+
+                # --- Optimization Dynamics ---
+                optimizer='auto',           # Optimization algorithm (usually selects AdamW or SGD automatically).
+                weight_decay=0.0005,        # L2 Regularization. Penalizes large weights to reduce overfitting.
+                warmup_epochs=3.0,          # "Warmup" period. Uses lower learning rate at start to stabilize gradients.
+
+                # --- Photometric Augmentations (Lighting & Color) ---
+                hsv_h=0.025,                # Hue (2.5% shift). Simulates different camera color sensors.
+                hsv_s=0.8,                  # Saturation (80% var). CRITICAL: Simulates rainy (dull) vs sunny (vivid) weather.
+                hsv_v=0.5,                  # Value/Brightness (50% var). Simulates shadows, tunnels, and sun glare.
+
+                # --- Geometric Augmentations (Position & Shape) ---
+                degrees=15.0,               # Rotation (+/- 15 deg). Handles tilted signs or banking car motion.
+                translate=0.2,              # Translation (+/- 20%). Model learns signs aren't always centered.
+                scale=0.7,                  # Scale (+/- 70%). KEY FOR VIDEO: Detects signs both far away (dots) and very close.
+                shear=5.0,                  # Shear (+/- 5 deg). Simulates perspective distortion (viewing angle).
+                perspective=0.001,          # Perspective (0-0.001). Slight 3D depth effect.
+                flipud=0.0,                 # Vertical flip (Disabled). Traffic signs are never upside down.
+                fliplr=0.5,                 # Horizontal flip (50%). Learns general shape symmetry.
+
+                # --- Advanced Regularization (Structure & Overfitting) ---
+                mosaic=1.0,             # Mosaic (100%). Stitches 4 images. Forces model to learn context/small objects.
+                mixup=0.15,             # MixUp (15%). Blends 2 images. Smooths decision boundaries for ambiguous inputs.
+                copy_paste=0.1,         # Copy-Paste (10%). Pastes signs onto random backgrounds to increase density.
+
+                # --- Training Hyperparameters ---
+                box=7.5,                # Box loss gain. Higher = stricter bounding box accuracy.
+                cls=0.5,                # Class loss gain.
+                dfl=1.5,                # Distribution Focal Loss.
+                close_mosaic=15,        # Disable Mosaic for the last 15 epochs to stabilize training.
+                dropout=0.2,            # Dropout (20%). Randomly drops neurons to prevent memorization (overfitting).
             )
 
             self.training_end_time = datetime.now()
